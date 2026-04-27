@@ -1462,9 +1462,11 @@ app.get("/bookings/landlord", verifyToken, requireRole("landlord"), async (req, 
 
 app.get("/admin/bookings", verifyToken, requireRole("admin"), async (req, res) => {
   try {
+    console.log("[/admin/bookings] req.user.id:", req.user.id);
     const bookings = await Booking.find({})
       .populate("propertyId", "title location type price landlordId")
       .sort({ createdAt: -1 });
+    console.log("[/admin/bookings] bookings found:", bookings.length);
     const tenantNameMap = await buildTenantNameMap(bookings.map((booking) => booking.tenantId));
     const landlordNameMap = await buildUserNameMap(bookings.map((booking) => booking.landlordId));
 
@@ -1556,9 +1558,11 @@ app.get("/admin/bookings", verifyToken, requireRole("admin"), async (req, res) =
 
 app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res) => {
   try {
+    console.log("[/bookings/tenant] req.user.id:", req.user.id, "role:", req.user.role);
     const bookings = await Booking.find({ tenantId: req.user.id })
       .populate("propertyId", "title location type price image")
       .sort({ createdAt: -1 });
+    console.log("[/bookings/tenant] bookings found:", bookings.length);
     const tenantNameMap = await buildTenantNameMap(bookings.map((booking) => booking.tenantId));
 
     if (bookings.length === 0) {
@@ -1566,6 +1570,7 @@ app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res)
         .populate("propertyId", "title location type price image")
         .sort({ date: -1 });
       const dedupedPayments = dedupeMonthlyPayments(payments);
+      console.log("[/bookings/tenant] deduped payments:", dedupedPayments.length, "tenantId used:", req.user.id);
 
       return res.json(
         dedupedPayments.map((payment) => {
