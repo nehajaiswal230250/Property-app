@@ -1468,6 +1468,50 @@ app.get("/admin/bookings", verifyToken, requireRole("admin"), async (req, res) =
     const tenantNameMap = await buildTenantNameMap(bookings.map((booking) => booking.tenantId));
     const landlordNameMap = await buildUserNameMap(bookings.map((booking) => booking.landlordId));
 
+    if (bookings.length === 0) {
+      const payments = await Payment.find({})
+        .populate("propertyId", "title location type price landlordId")
+        .sort({ date: -1 });
+      const dedupedPayments = dedupeMonthlyPayments(payments);
+
+      return res.json(
+        dedupedPayments.map((payment) => {
+          const { billingPeriodStart, billingPeriodEnd, nextPaymentDate } = normalizeMonthlyCycle(
+            payment.billingPeriodStart || payment.date || new Date(),
+            payment.billingPeriodEnd,
+            payment.nextPaymentDate
+          );
+          const paymentStatus = String(payment.status || "").toLowerCase();
+          return {
+            _id: payment._id,
+            tenantName: normalizeTenantDisplayName(payment.tenantName, {
+              name: tenantNameMap[String(payment.tenantId || "")] || ""
+            }),
+            tenantId: payment.tenantId,
+            landlordId: String(payment.propertyId?.landlordId || ""),
+            landlordName: landlordNameMap[String(payment.propertyId?.landlordId || "")] || "",
+            property: payment.propertyId
+              ? {
+                  _id: payment.propertyId._id,
+                  title: payment.propertyId.title,
+                  location: payment.propertyId.location,
+                  type: payment.propertyId.type,
+                  price: Number(payment.propertyId.price || 0)
+                }
+              : null,
+            startDate: billingPeriodStart,
+            endDate: billingPeriodEnd,
+            billingPeriodStart,
+            billingPeriodEnd,
+            nextPaymentDate,
+            status: paymentStatus === "paid" ? "active" : paymentStatus,
+            amount: Number(payment.amount || 0),
+            createdAt: payment.date || new Date()
+          };
+        })
+      );
+    }
+
     const normalizedBookings = bookings.map((booking) => {
       const { billingPeriodStart, billingPeriodEnd, nextPaymentDate } = normalizeMonthlyCycle(
         booking.billingPeriodStart || booking.startDate || booking.createdAt || new Date(),
@@ -1516,6 +1560,49 @@ app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res)
       .populate("propertyId", "title location type price image")
       .sort({ createdAt: -1 });
     const tenantNameMap = await buildTenantNameMap(bookings.map((booking) => booking.tenantId));
+
+    if (bookings.length === 0) {
+      const payments = await Payment.find({ tenantId: req.user.id })
+        .populate("propertyId", "title location type price image")
+        .sort({ date: -1 });
+      const dedupedPayments = dedupeMonthlyPayments(payments);
+
+      return res.json(
+        dedupedPayments.map((payment) => {
+          const { billingPeriodStart, billingPeriodEnd, nextPaymentDate } = normalizeMonthlyCycle(
+            payment.billingPeriodStart || payment.date || new Date(),
+            payment.billingPeriodEnd,
+            payment.nextPaymentDate
+          );
+          const paymentStatus = String(payment.status || "").toLowerCase();
+          return {
+            _id: payment._id,
+            tenantName: normalizeTenantDisplayName(payment.tenantName, {
+              name: tenantNameMap[String(payment.tenantId || "")] || ""
+            }),
+            tenantId: payment.tenantId,
+            property: payment.propertyId
+              ? {
+                  _id: payment.propertyId._id,
+                  title: payment.propertyId.title,
+                  location: payment.propertyId.location,
+                  type: payment.propertyId.type,
+                  price: payment.propertyId.price,
+                  image: payment.propertyId.image
+                }
+              : null,
+            startDate: billingPeriodStart,
+            endDate: billingPeriodEnd,
+            billingPeriodStart,
+            billingPeriodEnd,
+            nextPaymentDate,
+            status: paymentStatus === "paid" ? "active" : paymentStatus,
+            amount: Number(payment.amount || 0),
+            createdAt: payment.date || new Date()
+          };
+        })
+      );
+    }
 
     return res.json(
       bookings.map((booking) => {

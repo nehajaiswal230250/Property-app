@@ -1,19 +1,9 @@
 import axios from "axios";
-import { auth } from "../firebase";
 import { getSessionUser } from "../utils/sessionUser";
 
 export function getCurrentAuthUserId() {
   const sessionUser = getSessionUser();
-  if (sessionUser?.id) {
-    return sessionUser.id;
-  }
-
-  const authId = auth.currentUser?.uid;
-  if (authId) {
-    return authId;
-  }
-
-  return "";
+  return sessionUser?.id || "";
 }
 
 function authHeaderConfig() {
