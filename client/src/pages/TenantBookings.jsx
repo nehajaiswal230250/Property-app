@@ -17,12 +17,13 @@ function TenantBookings() {
       try {
         setLoading(true);
         const tenantId = getCurrentAuthUserId();
-        if (!tenantId) {
+        const token = localStorage.getItem("token");
+        if (!tenantId || !token) {
           setStatusMessage({ type: "error", message: "Please login again to view your bookings." });
           setBookingsData([]);
           return;
         }
-        const docs = await getTenantBookings(tenantId);
+        const docs = await getTenantBookings();
         setBookingsData(docs || []);
       } catch (error) {
         console.error("Tenant bookings fetch failed", error);
