@@ -1571,7 +1571,7 @@ app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res)
         .sort({ date: -1 });
       const dedupedPayments = dedupeMonthlyPayments(payments);
       console.log("[/bookings/tenant] deduped payments:", dedupedPayments.length, "tenantId used:", req.user.id);
-
+      console.log("[/bookings/tenant] returning:", JSON.stringify(dedupedPayments.map(p => ({ _id: p._id, tenantId: p.tenantId, propertyId: p.propertyId, status: p.status }))));
       return res.json(
         dedupedPayments.map((payment) => {
           const { billingPeriodStart, billingPeriodEnd, nextPaymentDate } = normalizeMonthlyCycle(
