@@ -22,11 +22,10 @@ function TenantDashboard() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const tenantId = getCurrentAuthUserId();
         const [propertiesDocs, bookingsDocs, profileData] = await Promise.all([
           getApprovedProperties(),
-          tenantId ? getTenantBookings(tenantId) : Promise.resolve([]),
-          tenantId ? getFullProfile(tenantId) : Promise.resolve(null)
+          getTenantBookings(),
+          getFullProfile()
         ]);
         setProperties(propertiesDocs || []);
         setPayments(bookingsDocs || []);
