@@ -1462,7 +1462,7 @@ app.get("/bookings/landlord", verifyToken, requireRole("landlord"), async (req, 
 
 app.get("/admin/bookings", verifyToken, requireRole("admin"), async (req, res) => {
   try {
-    console.log("[/admin/bookings] req.user.id:", req.user.id);
+    console.log("[/admin/bookings] req.user:", req.user);
     const bookings = await Booking.find({})
       .populate("propertyId", "title location type price landlordId")
       .sort({ createdAt: -1 });
@@ -1558,11 +1558,12 @@ app.get("/admin/bookings", verifyToken, requireRole("admin"), async (req, res) =
 
 app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res) => {
   try {
-    console.log("[/bookings/tenant] req.user.id:", req.user.id, "role:", req.user.role);
+    const token = localStorage.getItem("token");
+    console.log("[/bookings/tenant] req.user:", req.user, "token exists:", !!token);
     const bookings = await Booking.find({ tenantId: req.user.id })
       .populate("propertyId", "title location type price image")
       .sort({ createdAt: -1 });
-    console.log("[/bookings/tenant] bookings found:", bookings.length);
+    console.log("[/bookings/tenant] bookings found:", bookings.length, "for tenantId:", req.user.id);
     const tenantNameMap = await buildTenantNameMap(bookings.map((booking) => booking.tenantId));
 
     if (bookings.length === 0) {
@@ -1570,8 +1571,8 @@ app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res)
         .populate("propertyId", "title location type price image")
         .sort({ date: -1 });
       const dedupedPayments = dedupeMonthlyPayments(payments);
-      console.log("[/bookings/tenant] deduped payments:", dedupedPayments.length, "tenantId used:", req.user.id);
-      console.log("[/bookings/tenant] returning:", JSON.stringify(dedupedPayments.map(p => ({ _id: p._id, tenantId: p.tenantId, propertyId: p.propertyId, status: p.status }))));
+      console.log("[/bookings/tenant] no bookings, payments found:", payments.length, "deduped:", dedupedPayments.length, "tenantId:", req.user.id);
+      console.log("[/bookings/tenant] sample payment tenantIds:", payments.slice(0,3).map(p => p.tenantId));
       return res.json(
         dedupedPayments.map((payment) => {
           const { billingPeriodStart, billingPeriodEnd, nextPaymentDate } = normalizeMonthlyCycle(
