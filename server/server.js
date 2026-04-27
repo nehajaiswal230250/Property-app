@@ -1462,11 +1462,9 @@ app.get("/bookings/landlord", verifyToken, requireRole("landlord"), async (req, 
 
 app.get("/admin/bookings", verifyToken, requireRole("admin"), async (req, res) => {
   try {
-    console.log("[/admin/bookings] req.user:", req.user);
     const bookings = await Booking.find({})
       .populate("propertyId", "title location type price landlordId")
       .sort({ createdAt: -1 });
-    console.log("[/admin/bookings] bookings found:", bookings.length);
     const tenantNameMap = await buildTenantNameMap(bookings.map((booking) => booking.tenantId));
     const landlordNameMap = await buildUserNameMap(bookings.map((booking) => booking.landlordId));
 
@@ -1558,12 +1556,9 @@ app.get("/admin/bookings", verifyToken, requireRole("admin"), async (req, res) =
 
 app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res) => {
   try {
-    const token = localStorage.getItem("token");
-    console.log("[/bookings/tenant] req.user:", req.user, "token exists:", !!token);
     const bookings = await Booking.find({ tenantId: req.user.id })
       .populate("propertyId", "title location type price image")
       .sort({ createdAt: -1 });
-    console.log("[/bookings/tenant] bookings found:", bookings.length, "for tenantId:", req.user.id);
     const tenantNameMap = await buildTenantNameMap(bookings.map((booking) => booking.tenantId));
 
     if (bookings.length === 0) {
@@ -1571,8 +1566,6 @@ app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res)
         .populate("propertyId", "title location type price image")
         .sort({ date: -1 });
       const dedupedPayments = dedupeMonthlyPayments(payments);
-      console.log("[/bookings/tenant] no bookings, payments found:", payments.length, "deduped:", dedupedPayments.length, "tenantId:", req.user.id);
-      console.log("[/bookings/tenant] sample payment tenantIds:", payments.slice(0,3).map(p => p.tenantId));
       return res.json(
         dedupedPayments.map((payment) => {
           const { billingPeriodStart, billingPeriodEnd, nextPaymentDate } = normalizeMonthlyCycle(
@@ -1580,12 +1573,8 @@ app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res)
             payment.billingPeriodEnd,
             payment.nextPaymentDate
           );
-          const paymentStatus = String(payment.status || "").toLowerCase();
           return {
             _id: payment._id,
-            tenantName: normalizeTenantDisplayName(payment.tenantName, {
-              name: tenantNameMap[String(payment.tenantId || "")] || ""
-            }),
             tenantId: payment.tenantId,
             property: payment.propertyId
               ? {
@@ -1602,7 +1591,7 @@ app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res)
             billingPeriodStart,
             billingPeriodEnd,
             nextPaymentDate,
-            status: paymentStatus === "paid" ? "active" : paymentStatus,
+            status: String(payment.status || "").toLowerCase() === "paid" ? "active" : payment.status,
             amount: Number(payment.amount || 0),
             createdAt: payment.date || new Date()
           };
@@ -1620,9 +1609,6 @@ app.get("/bookings/tenant", verifyToken, requireRole("tenant"), async (req, res)
 
         return {
           _id: booking._id,
-          tenantName: normalizeTenantDisplayName(booking.tenantName, {
-            name: tenantNameMap[String(booking.tenantId || "")] || ""
-          }),
           tenantId: booking.tenantId,
           property: booking.propertyId
             ? {
